@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/verifier
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('*/**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config
+      
+      - name: Create .env file
+        run: |
+          echo "RPC_URL=${{ secrets.RPC_URL }}" >> .env
+          echo "PRIVATE_KEY=${{ secrets.PRIVATE_KEY }}" >> .env
+      
+      - name: Build
+        run: cargo build --verbose
+      
+      - name: Run tests
+        run: cargo test --verbose
